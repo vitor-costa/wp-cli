@@ -23,15 +23,25 @@ class Option_Command extends WP_CLI_Command {
 		WP_CLI::print_value( $value, $assoc_args );
 	}
 
+	private static function get_value( $args, $assoc_args ) {
+		if ( isset( $args[1] ) ) {
+			$raw_value = $args[1];
+		} else {
+			$raw_value = file_get_contents( 'php://stdin' );
+		}
+
+		return WP_CLI::read_value( $raw_value, $assoc_args );
+	}
+
 	/**
-	 * Add an option.
+	 * Add an option. If the _value_ parameter is ommited, the value is read from STDIN.
 	 *
-	 * @synopsis <key> [--format=<format>]
+	 * @synopsis <key> [<value>] [--format=<format>]
 	 */
 	public function add( $args, $assoc_args ) {
 		$key = $args[0];
 
-		$value = WP_CLI::read_value( $args[1], $assoc_args );
+		$value = self::get_value( $args, $assoc_args );
 
 		if ( !add_option( $key, $value ) ) {
 			WP_CLI::error( "Could not add option '$key'. Does it already exist?" );
@@ -41,15 +51,15 @@ class Option_Command extends WP_CLI_Command {
 	}
 
 	/**
-	 * Update an option.
+	 * Update an option. If the _value_ parameter is ommited, the value is read from STDIN.
 	 *
 	 * @alias set
-	 * @synopsis <key> [--format=<format>]
+	 * @synopsis <key> [<value>] [--format=<format>]
 	 */
 	public function update( $args, $assoc_args ) {
 		$key = $args[0];
 
-		$value = WP_CLI::read_value( $args[1], $assoc_args );
+		$value = self::get_value( $args, $assoc_args );
 
 		$result = update_option( $key, $value );
 

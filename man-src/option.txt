@@ -6,10 +6,13 @@
 
 ## EXAMPLES
 
-	wp option get siteurl
-
+	# Add, show and delete an option
 	wp option add my_option foobar
+	wp option get siteurl
+	wp option delete my_option
 
+	# Update an option by passing a JSON value inline
 	wp option update my_option '{"foo": "bar"}' --format=json
 
-	wp option delete my_option
+	# Update an option by passing a JSON file
+	wp option update my_option --format=json < config.json
