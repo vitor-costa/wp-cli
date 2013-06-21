@@ -45,14 +45,15 @@ abstract class CommandWithMeta extends \WP_CLI_Command {
 	}
 
 	/**
-	 * Add a meta field.
+	 * Add a meta field. If the _value_ parameter is ommited, the value is read from STDIN.
 	 *
-	 * @synopsis <id> <key> <value> [--format=<format>]
+	 * @synopsis <id> <key> [<value>] [--format=<format>]
 	 */
 	public function add( $args, $assoc_args ) {
 		list( $object_id, $meta_key ) = $args;
 
-		$meta_value = \WP_CLI::read_value( $args[2], $assoc_args );
+		$meta_value = \WP_CLI::get_value_from_arg_or_stdin( $args, 2 );
+		$meta_value = \WP_CLI::read_value( $meta_value, $assoc_args );
 
 		$success = \add_metadata( $this->meta_type, $object_id, $meta_key, $meta_value );
 
@@ -64,15 +65,16 @@ abstract class CommandWithMeta extends \WP_CLI_Command {
 	}
 
 	/**
-	 * Update a meta field.
+	 * Update a meta field. If the _value_ parameter is ommited, the value is read from STDIN.
 	 *
 	 * @alias set
-	 * @synopsis <id> <key> <value> [--format=<format>]
+	 * @synopsis <id> <key> [<value>] [--format=<format>]
 	 */
 	public function update( $args, $assoc_args ) {
 		list( $object_id, $meta_key ) = $args;
 
-		$meta_value = \WP_CLI::read_value( $args[2], $assoc_args );
+		$meta_value = \WP_CLI::get_value_from_arg_or_stdin( $args, 2 );
+		$meta_value = \WP_CLI::read_value( $meta_value, $assoc_args );
 
 		$success = \update_metadata( $this->meta_type, $object_id, $meta_key, $meta_value );
 

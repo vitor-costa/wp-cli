@@ -23,21 +23,6 @@ class Option_Command extends WP_CLI_Command {
 		WP_CLI::print_value( $value, $assoc_args );
 	}
 
-	private static function get_value( $args, $assoc_args ) {
-		if ( isset( $args[1] ) ) {
-			$raw_value = $args[1];
-		} else {
-			// We don't use file_get_contents() here because it doesn't handle
-			// Ctrl-D properly, when typing in the value interactively.
-			$raw_value = '';
-			while ( ( $line = fgets( STDIN ) ) !== false ) {
-				$raw_value .= $line;
-			}
-		}
-
-		return WP_CLI::read_value( $raw_value, $assoc_args );
-	}
-
 	/**
 	 * Add an option. If the _value_ parameter is ommited, the value is read from STDIN.
 	 *
@@ -46,7 +31,8 @@ class Option_Command extends WP_CLI_Command {
 	public function add( $args, $assoc_args ) {
 		$key = $args[0];
 
-		$value = self::get_value( $args, $assoc_args );
+		$value = WP_CLI::get_value_from_arg_or_stdin( $args, 1 );
+		$value = WP_CLI::read_value( $value, $assoc_args );
 
 		if ( !add_option( $key, $value ) ) {
 			WP_CLI::error( "Could not add option '$key'. Does it already exist?" );
@@ -64,7 +50,8 @@ class Option_Command extends WP_CLI_Command {
 	public function update( $args, $assoc_args ) {
 		$key = $args[0];
 
-		$value = self::get_value( $args, $assoc_args );
+		$value = WP_CLI::get_value_from_arg_or_stdin( $args, 1 );
+		$value = WP_CLI::read_value( $value, $assoc_args );
 
 		$result = update_option( $key, $value );
 
