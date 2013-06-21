@@ -27,7 +27,12 @@ class Option_Command extends WP_CLI_Command {
 		if ( isset( $args[1] ) ) {
 			$raw_value = $args[1];
 		} else {
-			$raw_value = file_get_contents( 'php://stdin' );
+			// We don't use file_get_contents() here because it doesn't handle
+			// Ctrl-D properly, when typing in the value interactively.
+			$raw_value = '';
+			while ( ( $line = fgets( STDIN ) ) !== false ) {
+				$raw_value .= $line;
+			}
 		}
 
 		return WP_CLI::read_value( $raw_value, $assoc_args );
