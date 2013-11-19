@@ -9,6 +9,9 @@ class Theme extends Base {
 	public function get( $name ) {
 		$theme = wp_get_theme( $name );
 
+		// ugly fix to #875
+		$theme->cache_delete();
+
 		if ( !$theme->exists() ) {
 			return false;
 		}
