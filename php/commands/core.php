@@ -659,6 +659,88 @@ define('BLOG_ID_CURRENT_SITE', 1);
 	}
 
 	/**
+	 * Security copy of the core function with Requests - Gets the checksums for the given version of WordPress.
+	 *
+	 * @param string $version Version string to query.
+	 * @param string $locale  Locale to query.
+	 * @return bool|array False on failure. An array of checksums on success.
+	 */
+	private static function get_core_checksums( $version, $locale ) {
+		$return = array();
+
+		$url = $http_url = 'http://api.wordpress.org/core/checksums/1.0/?' . http_build_query( compact( 'version', 'locale' ), null, '&' );
+
+		if ( $ssl = wp_http_supports( array( 'ssl' ) ) )
+			$url = 'https' . substr( $url, 4 );
+
+		$options = array(
+			'timeout' => ( ( defined('DOING_CRON') && DOING_CRON ) ? 30 : 3 )
+		);
+
+		$headers = array(
+			'Accept' => 'application/json'
+		);
+		$response = self::_request( 'GET', $url, $headers, $options );
+
+		if ( $ssl && ! $response->success ) {
+			trigger_error( __( 'An unexpected error occurred. Something may be wrong with WordPress.org or this server&#8217;s configuration. If you continue to have problems, please try the <a href="https://wordpress.org/support/">support forums</a>.' ) . ' ' . __( '(WordPress could not establish a secure connection to WordPress.org. Please contact your server administrator.)' ), headers_sent() || WP_DEBUG ? E_USER_WARNING : E_USER_NOTICE );
+			$response = self::_request( 'GET', $http_url, $headers, $options );
+		}
+
+		if ( ! $response->success || 200 != $response->status_code )
+			return false;
+
+		$body = trim( $response->body );
+		$body = json_decode( $body, true );
+
+		if ( ! is_array( $body ) || ! isset( $body['checksums'] ) || ! is_array( $body['checksums'] ) )
+			return false;
+
+		return $body['checksums'];
+	}
+
+	/**
+	 * Verify WordPress files against WordPress.org's checksums.
+	 *
+	 * @subcommand verify-checksums
+	 */
+	public function verify_checksums( $args, $assoc_args ) {
+		global $wp_version, $wp_local_package;
+
+		$checksums = self::get_core_checksums( $wp_version, isset( $wp_local_package ) ? $wp_local_package : 'en_US' );
+
+		if ( ! is_array( $checksums ) ) {
+			WP_CLI::error( "Couldn't get checksums from WordPress.org." );
+		}
+
+		$has_errors = false;
+		foreach ( $checksums as $file => $checksum ) {
+			// Skip files which get updated
+			if ( 'wp-content' == substr( $file, 0, 10 ) ) {
+				continue;
+			}
+
+			if ( ! file_exists( ABSPATH . $file ) ) {
+				WP_CLI::warning( "File doesn't exist: {$file}" );
+				$has_errors = true;
+				continue;
+			}
+
+			$md5_file = md5_file( ABSPATH . $file );
+			if ( $md5_file !== $checksum ) {
+				WP_CLI::warning( "File doesn't verify against checksum: {$file}" );
+				$has_errors = true;
+			}
+		}
+
+		if ( ! $has_errors ) {
+			WP_CLI::success( "WordPress install verifies against checksums." );
+		} else {
+			WP_CLI::error( "WordPress install doesn't verify against checksums." );
+		}
+	}
+
+	/**
 	 * Update WordPress.
 	 *
 	 * ## OPTIONS
@@ -691,31 +773,44 @@ define('BLOG_ID_CURRENT_SITE', 1);
 		$update = $from_api = null;
 		$upgrader = 'Core_Upgrader';
 
-		if ( empty( $assoc_args['version'] ) ) {
+		if ( ! empty( $args[0] ) ) {
+
+			$upgrader = 'WP_CLI\\NonDestructiveCoreUpgrader';
+			$version = ! empty( $assoc_args['version'] ) ? $assoc_args['version'] : null;
+
+			$update = (object) array(
+				'response'      => 'upgrade',
+				'current'       => $version,
+				'download'      => $args[0],
+				'packages'      => (object) array (
+									'partial' => null,
+									'new_bundled' => null,
+									'no_content' => null,
+									'full' => $args[0],
+								),
+				'version' => $version,
+			);
+
+		} else if ( empty( $assoc_args['version'] ) ) {
+
 			wp_version_check();
 			$from_api = get_site_transient( 'update_core' );
 
-			if ( empty( $from_api->updates ) )
+			if ( empty( $from_api->updates ) ) {
 				$update = false;
-			else
+			} else {
 				list( $update ) = $from_api->updates;
+			}
 
 		} else if (	version_compare( $wp_version, $assoc_args['version'], '<' )
 					|| isset( $assoc_args['force'] ) ) {
 
-			$new_package = $version = null;
+			$version = $assoc_args['version'];
+			$locale = isset( $assoc_args['locale'] ) ? $assoc_args['locale'] : get_locale();
 
-			if ( empty( $args[0] ) ) {
-				$version = $assoc_args['version'];
-				$locale = isset( $assoc_args['locale'] ) ? $assoc_args['locale'] : get_locale();
+			$new_package = $this->get_download_url($version, $locale);
 
-				$new_package = $this->get_download_url($version, $locale);
-
-				WP_CLI::log( sprintf( 'Downloading WordPress %s (%s)...', $assoc_args['version'], $locale ) );
-			} else {
-				$new_package = $args[0];
-				$upgrader = 'WP_CLI\\NonDestructiveCoreUpgrader';
-			}
+			WP_CLI::log( sprintf( 'Downloading WordPress %s (%s)...', $assoc_args['version'], $locale ) );
 
 			$update = (object) array(
 				'response' => 'upgrade',

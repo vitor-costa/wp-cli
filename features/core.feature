@@ -232,12 +232,72 @@ Feature: Manage WordPress installation
       example.com
       """
 
+  Scenario: Update from a ZIP file
+    Given a WP install
+
+    When I run `wp core download --version=3.8 --force`
+    Then STDOUT should not be empty
+
+    When I run `wp eval 'echo $GLOBALS["wp_version"];'`
+    Then STDOUT should be:
+      """
+      3.8
+      """
+
+    When I run `wget http://wordpress.org/wordpress-3.9.zip --quiet`
+    Then STDOUT should be empty
+
+    When I run `wp core update wordpress-3.9.zip`
+    Then STDOUT should be:
+      """
+      Unpacking the update...
+      Success: WordPress updated successfully.
+      """
+
+    When I run `wp eval 'echo $GLOBALS["wp_version"];'`
+    Then STDOUT should be:
+      """
+      3.9
+      """
+
   Scenario: Custom wp-content directory
     Given a WP install
     And a custom wp-content directory
 
     When I run `wp plugin status hello`
     Then STDOUT should not be empty
+
+  Scenario: Verify core checksums
+    Given a WP install
+
+    When I run `wp core update`
+    Then STDOUT should not be empty
+
+    When I run `wp core verify-checksums`
+    Then STDOUT should be:
+      """
+      Success: WordPress install verifies against checksums.
+      """
+
+    When I run `sed -i.bak s/WordPress/Wordpress/g readme.html`
+    Then STDERR should be empty
+
+    When I try `wp core verify-checksums`
+    Then STDERR should be:
+      """
+      Warning: File doesn't verify against checksum: readme.html
+      Error: WordPress install doesn't verify against checksums.
+      """
+
+    When I run `rm readme.html`
+    Then STDERR should be empty
+
+    When I try `wp core verify-checksums`
+    Then STDERR should be:
+      """
+      Warning: File doesn't exist: readme.html
+      Error: WordPress install doesn't verify against checksums.
+      """
 
   Scenario: User defined in wp-cli.yml
     Given an empty directory
