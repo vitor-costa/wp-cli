@@ -179,7 +179,6 @@ class Scaffold_Command extends WP_CLI_Command {
 	 * : What to put in the 'Author URI:' header in style.css
 	 */
 	function _s( $args, $assoc_args ) {
-
 		$theme_slug = $args[0];
 		$theme_path = WP_CONTENT_DIR . "/themes";
 		$url = "http://underscores.me";
@@ -216,6 +215,7 @@ class Scaffold_Command extends WP_CLI_Command {
 
 		$this->maybe_create_themes_dir();
 
+		$this->init_wp_filesystem();
 		unzip_file( $tmpfname, $theme_path );
 		unlink( $tmpfname );
 
