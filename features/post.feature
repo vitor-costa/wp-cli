@@ -89,7 +89,21 @@ Feature: Manage WordPress posts
       """
       This is some bunkum.
       """
-    
+
+    When I run `wp post get --fields=ID,title {POST_ID}`
+    Then STDOUT should be a table containing rows:
+      """
+      | Field      | Value     |
+      | ID         | {POST_ID} |
+      | post_title | Test post |
+      """
+
+    When I run `wp post get --fields=ID,title {POST_ID} | wc -l`
+    Then STDOUT should be:
+      """
+      3
+      """
+
     When I run `wp post url 1 {POST_ID}`
     Then STDOUT should be:
       """

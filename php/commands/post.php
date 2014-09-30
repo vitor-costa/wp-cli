@@ -145,6 +145,9 @@ class Post_Command extends \WP_CLI\CommandWithDBObject {
 	 * [--field=<field>]
 	 * : Instead of returning the whole post, returns the value of a single field.
 	 *
+	 * [--fields=<fields>]
+	 * : Limit the output to specific post fields.
+	 *
 	 * [--format=<format>]
 	 * : Accepted values: table, json. Default: table
 	 *

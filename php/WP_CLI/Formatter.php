@@ -64,15 +64,22 @@ class Formatter {
 			$this->show_single_field( $items, $this->args['field'] );
 		} else {
 			if ( in_array( $this->args['format'], array( 'csv', 'json', 'table' ) ) ) {
-				$item = is_array( $items ) && ! empty( $items ) ? array_shift( $items ) : false;
-				if ( $item && ! empty( $this->args['fields'] ) ) {
-					foreach( $this->args['fields'] as &$field ) {
-						$field = $this->find_item_key( $item, $field );
-					}
-					array_unshift( $items, $item );
+				if ( is_array( $items ) && ! empty( $items ) && ! empty( $this->args['fields'] ) ) {
+					$this->convert_fields_names( $items[0] );
 				}
 			}
 			$this->format( $items );
+		}
+	}
+
+	/**
+	 * Convert fields names. Example: author -> post_author
+	 *
+	 * @param $item
+	 */
+	protected function convert_fields_names( $item ) {
+		foreach( $this->args['fields'] as &$field ) {
+			$field = $this->find_item_key( $item, $field );
 		}
 	}
 
@@ -87,7 +94,10 @@ class Formatter {
 			$key = $this->find_item_key( $item, $this->args['field'] );
 			\WP_CLI::print_value( $item->$key, array( 'format' => $this->args['format'] ) );
 		} else {
-			self::show_multiple_fields( $item, $this->args['format'] );
+			if ( ! empty( $this->args['fields'] ) ) {
+				$this->convert_fields_names( $item );
+			}
+			$this->show_multiple_fields( $item, $this->args['format'] );
 		}
 	}
 
@@ -194,12 +204,12 @@ class Formatter {
 	 * @param object|array Data to display
 	 * @param string Format to display the data in
 	 */
-	private static function show_multiple_fields( $data, $format ) {
+	private function show_multiple_fields( $data, $format ) {
 
 		switch ( $format ) {
 
 		case 'table':
-			self::assoc_array_to_table( $data );
+			$this->assoc_array_to_table( $data );
 			break;
 
 		case 'json':
@@ -237,7 +247,7 @@ class Formatter {
 	 *
 	 * @param array     $fields    Fields and values to format
 	 */
-	private static function assoc_array_to_table( $fields ) {
+	private function assoc_array_to_table( $fields ) {
 		$rows = array();
 
 		foreach ( $fields as $field => $value ) {
@@ -245,10 +255,12 @@ class Formatter {
 				$value = json_encode( $value );
 			}
 
-			$rows[] = (object) array(
-				'Field' => $field,
-				'Value' => $value
-			);
+			if ( isset( $this->args['fields'][$field] ) ) {
+				$rows[] = (object) array(
+					'Field' => $field,
+					'Value' => $value
+				);
+			}
 		}
 
 		self::show_table( $rows, array( 'Field', 'Value' ) );
